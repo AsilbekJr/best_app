@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Best Burger — Admin Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #333; }
+        
+        .sidebar { width: 240px; background: #1a1a2e; height: 100vh; position: fixed; left: 0; top: 0; padding: 20px; }
+        .sidebar .logo { color: #4ade80; font-size: 1.4rem; font-weight: 800; margin-bottom: 32px; display: flex; align-items: center; gap: 8px; }
+        .sidebar nav a { display: flex; align-items: center; gap: 10px; color: #94a3b8; text-decoration: none; padding: 10px 12px; border-radius: 8px; margin-bottom: 4px; transition: all 0.2s; font-size: 0.9rem; }
+        .sidebar nav a:hover, .sidebar nav a.active { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+        
+        .main { margin-left: 240px; padding: 24px; min-height: 100vh; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .header h1 { font-size: 1.5rem; font-weight: 700; }
+        
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .stat-card .number { font-size: 2rem; font-weight: 800; color: #4ade80; }
+        .stat-card .label { color: #64748b; font-size: 0.85rem; margin-top: 4px; }
+        
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .card-header h2 { font-size: 1.1rem; font-weight: 700; }
+        
+        .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; }
+        .btn-primary { background: #4ade80; color: #1a1a1a; }
+        .btn-primary:hover { background: #22c55e; }
+        .btn-danger { background: #fee2e2; color: #dc2626; }
+        .btn-danger:hover { background: #fecaca; }
+        .btn-edit { background: #eff6ff; color: #2563eb; }
+        .btn-edit:hover { background: #dbeafe; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px 12px; background: #f8f9fa; color: #64748b; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        tr:hover td { background: #fbfcff; }
+        
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+        .badge-green { background: #dcfce7; color: #16a34a; }
+        .badge-red { background: #fee2e2; color: #dc2626; }
+        .badge-yellow { background: #fef9c3; color: #a16207; }
+        .badge-blue { background: #eff6ff; color: #2563eb; }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.open { display: flex; }
+        .modal-content { background: white; border-radius: 16px; padding: 28px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+        .modal-content h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem;
+            transition: border-color 0.2s; outline: none;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #4ade80; }
+        
+        .section { display: none; }
+        .section.active { display: block; }
+        
+        .product-img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: #f1f5f9; }
+        
+        .tab-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+        .tab-btn { padding: 8px 16px; border-radius: 8px; border: 1.5px solid #e2e8f0; background: white; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: #64748b; transition: all 0.2s; }
+        .tab-btn.active { background: #4ade80; color: #1a1a1a; border-color: #4ade80; }
+
+        .loading { text-align: center; padding: 40px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">🍔 Best Burger</div>
+        <nav>
+            <a href="#" class="active" onclick="showSection('dashboard')">📊 Dashboard</a>
+            <a href="#" onclick="showSection('products')">🍔 Mahsulotlar</a>
+            <a href="#" onclick="showSection('categories')">📂 Kategoriyalar</a>
+            <a href="#" onclick="showSection('branches')">📍 Filiallar</a>
+            <a href="#" onclick="showSection('orders')">📋 Buyurtmalar</a>
+        </nav>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <!-- Dashboard -->
+        <div id="dashboard" class="section active">
+            <div class="header">
+                <h1>📊 Dashboard</h1>
+                <span style="color:#64748b; font-size:0.9rem" id="dash-date"></span>
+            </div>
+
+            <!-- Bugungi kartochkalar -->
+            <div class="stats" style="grid-template-columns: repeat(4,1fr)">
+                <div class="stat-card" style="border-left: 4px solid #4ade80">
+                    <div style="font-size:0.8rem; color:#64748b; margin-bottom:4px">🛒 Bugungi buyurtmalar</div>
+                    <div class="number" id="stat-today-orders">—</div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid #f59e0b">
+                    <div style="font-size:0.8rem; color:#64748b; margin-bottom:4px">💰 Bugungi tushum</div>
+                    <div class="number" id="stat-today-revenue" style="color:#f59e0b">—</div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid #6366f1">
+                    <div style="font-size:0.8rem; color:#64748b; margin-bottom:4px">📦 Jami buyurtmalar</div>
+                    <div class="number" id="stat-total-orders" style="color:#6366f1">—</div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid #ec4899">
+                    <div style="font-size:0.8rem; color:#64748b; margin-bottom:4px">💵 Jami tushum</div>
+                    <div class="number" id="stat-total-revenue" style="color:#ec4899; font-size:1.2rem">—</div>
+                </div>
+            </div>
+
+            <!-- Grafik va Top mahsulotlar -->
+            <div style="display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:16px">
+                <!-- 7 kunlik tushum grafigi -->
+                <div class="card">
+                    <div class="card-header"><h2>📈 So'nggi 7 kun tushumi</h2></div>
+                    <div id="revenue-chart" style="height:180px; display:flex; align-items:flex-end; gap:8px; padding:0 8px"></div>
+                    <div id="revenue-labels" style="display:flex; gap:8px; padding:4px 8px; font-size:0.7rem; color:#94a3b8"></div>
+                </div>
+
+                <!-- Top 5 Mahsulotlar -->
+                <div class="card">
+                    <div class="card-header"><h2>🔥 Top Mahsulotlar</h2></div>
+                    <div id="top-products-list"><div class="loading">Yuklanmoqda...</div></div>
+                </div>
+            </div>
+
+            <!-- So'nggi buyurtmalar -->
+            <div class="card">
+                <div class="card-header"><h2>🕐 Oxirgi Buyurtmalar</h2></div>
+                <table>
+                    <thead><tr><th>ID</th><th>Mijoz</th><th>Turi</th><th>Summa</th><th>Status</th><th>Vaqt</th></tr></thead>
+                    <tbody id="recent-orders"><tr><td colspan="6" class="loading">Yuklanmoqda...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div id="products" class="section">
+            <div class="header">
+                <h1>🍔 Mahsulotlar</h1>
+                <button class="btn btn-primary" onclick="openProductModal()">+ Yangi Qo'shish</button>
+            </div>
+            <div class="card">
+                <table>
+                    <thead><tr><th>Rasm</th><th>Nom</th><th>Kategoriya</th><th>Narx</th><th>Holat</th><th>Amallar</th></tr></thead>
+                    <tbody id="products-table"><tr><td colspan="6" class="loading">Yuklanmoqda...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Categories -->
+        <div id="categories" class="section">
+            <div class="header">
+                <h1>📂 Kategoriyalar</h1>
+                <button class="btn btn-primary" onclick="openCategoryModal()">+ Yangi Qo'shish</button>
+            </div>
+            <div class="card">
+                <table>
+                    <thead><tr><th>Nom</th><th>Holat</th><th>Amallar</th></tr></thead>
+                    <tbody id="categories-table"><tr><td colspan="3" class="loading">Yuklanmoqda...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Branches -->
+        <div id="branches" class="section">
+            <div class="header">
+                <h1>📍 Filiallar</h1>
+                <button class="btn btn-primary" onclick="openBranchModal()">+ Yangi Qo'shish</button>
+            </div>
+            <div class="card">
+                <table>
+                    <thead><tr><th>Nom</th><th>Manzil</th><th>Holat</th><th>Amallar</th></tr></thead>
+                    <tbody id="branches-table"><tr><td colspan="4" class="loading">Yuklanmoqda...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Orders -->
+        <div id="orders" class="section">
+            <div class="header">
+                <h1>📋 Barcha Buyurtmalar</h1>
+            </div>
+            <div class="card">
+                <table>
+                    <thead><tr><th>ID</th><th>Mijoz</th><th>Telefon</th><th>Turi</th><th>Mahsulotlar</th><th>Summa</th><th>Status</th><th>Vaqt</th></tr></thead>
+                    <tbody id="orders-table"><tr><td colspan="8" class="loading">Yuklanmoqda...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="product-modal-title">Mahsulot Qo'shish</h3>
+            <input type="hidden" id="product-id">
+            <div class="form-group">
+                <label>Nom *</label>
+                <input type="text" id="product-name" placeholder="Burger nomi">
+            </div>
+            <div class="form-group">
+                <label>Tavsif</label>
+                <textarea id="product-desc" rows="2" placeholder="Qisqacha tavsif"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Narx (so'm) *</label>
+                <input type="number" id="product-price" placeholder="38000">
+            </div>
+            <div class="form-group">
+                <label>Rasm URL</label>
+                <input type="text" id="product-image" placeholder="https://...">
+            </div>
+            <div class="form-group">
+                <label>Kategoriya *</label>
+                <select id="product-category"></select>
+            </div>
+            <div class="form-group">
+                <label>Holat</label>
+                <select id="product-active">
+                    <option value="true">✅ Aktiv</option>
+                    <option value="false">❌ Nofaol</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn btn-primary" onclick="saveProduct()" style="flex:1">Saqlash</button>
+                <button class="btn" onclick="closeModal('product-modal')" style="flex:1; background:#f1f5f9;">Bekor</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="category-modal" class="modal">
+        <div class="modal-content">
+            <h3>Kategoriya Qo'shish</h3>
+            <input type="hidden" id="category-id">
+            <div class="form-group">
+                <label>Nom *</label>
+                <input type="text" id="category-name" placeholder="🍔 Burgerlar">
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn btn-primary" onclick="saveCategory()" style="flex:1">Saqlash</button>
+                <button class="btn" onclick="closeModal('category-modal')" style="flex:1; background:#f1f5f9;">Bekor</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Branch Modal -->
+    <div id="branch-modal" class="modal">
+        <div class="modal-content">
+            <h3>Filial Qo'shish</h3>
+            <input type="hidden" id="branch-id">
+            <div class="form-group">
+                <label>Nom *</label>
+                <input type="text" id="branch-name" placeholder="Best Burger — Chilonzor">
+            </div>
+            <div class="form-group">
+                <label>Manzil *</label>
+                <input type="text" id="branch-address" placeholder="Chilonzor, 9-mavze">
+            </div>
+            <div class="form-group">
+                <label>Kenglik (Lat)</label>
+                <input type="number" id="branch-lat" placeholder="41.2995" step="0.0001">
+            </div>
+            <div class="form-group">
+                <label>Uzunlik (Lng)</label>
+                <input type="number" id="branch-lng" placeholder="69.2401" step="0.0001">
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn btn-primary" onclick="saveBranch()" style="flex:1">Saqlash</button>
+                <button class="btn" onclick="closeModal('branch-modal')" style="flex:1; background:#f1f5f9;">Bekor</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = '/api/admin';
+        let categoriesList = [];
+
+        // Navigation
+        function showSection(name) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+            document.getElementById(name).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (name === 'dashboard') loadDashboard();
+            else if (name === 'products') loadProducts();
+            else if (name === 'categories') loadCategories();
+            else if (name === 'branches') loadBranches();
+            else if (name === 'orders') loadOrders();
+        }
+
+        // Modal
+        function openModal(id) { document.getElementById(id).classList.add('open'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        // ===== DASHBOARD =====
+        async function loadDashboard() {
+            document.getElementById('dash-date').textContent = new Date().toLocaleDateString('uz', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+            const [stats, topProds, orders] = await Promise.all([
+                fetch(`${API}/stats`).then(r => r.json()),
+                fetch(`${API}/top-products`).then(r => r.json()),
+                fetch(`${API}/orders`).then(r => r.json()),
+            ]);
+
+            // Kartochkalar
+            document.getElementById('stat-today-orders').textContent = stats.today?.orders ?? 0;
+            document.getElementById('stat-today-revenue').textContent = (stats.today?.revenue || 0).toLocaleString() + ' s';
+            document.getElementById('stat-total-orders').textContent = stats.total?.orders ?? 0;
+            document.getElementById('stat-total-revenue').textContent = (stats.total?.revenue || 0).toLocaleString() + ' s';
+
+            // 7 kunlik grafik
+            const days = stats.last7Days || [];
+            const maxRevenue = Math.max(...days.map(d => d.revenue), 1);
+            const chart = document.getElementById('revenue-chart');
+            const labels = document.getElementById('revenue-labels');
+            chart.innerHTML = days.map(d => {
+                const h = Math.max(8, Math.round((d.revenue / maxRevenue) * 160));
+                return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px">
+                    <span style="font-size:0.65rem; color:#64748b">${d.revenue > 0 ? (d.revenue/1000).toFixed(0)+'K' : ''}</span>
+                    <div style="width:100%; height:${h}px; background: linear-gradient(to top, #4ade80, #86efac); border-radius:6px 6px 0 0; transition:all 0.3s" title="${d.revenue.toLocaleString()} s"></div>
+                </div>`;
+            }).join('');
+            labels.innerHTML = days.map(d => `<span style="flex:1; text-align:center">${d.date}</span>`).join('');
+
+            // Top mahsulotlar
+            const topEl = document.getElementById('top-products-list');
+            topEl.innerHTML = topProds.length ? topProds.map((p, i) => `
+                <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f1f5f9">
+                    <div style="width:24px; height:24px; border-radius:50%; background:${['#fbbf24','#94a3b8','#cd7c32','#4ade80','#6366f1'][i]}; color:white; font-size:0.75rem; font-weight:800; display:flex; align-items:center; justify-content:center">${i+1}</div>
+                    <div style="flex:1; min-width:0">
+                        <div style="font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${p._id || 'Noma\'lum'}</div>
+                        <div style="font-size:0.75rem; color:#94a3b8">${p.totalQty} ta buyurtma</div>
+                    </div>
+                </div>
+            `).join('') : '<div class="loading">Buyurtmalar yo\'q</div>';
+
+            // Oxirgi buyurtmalar
+            const tbody = document.getElementById('recent-orders');
+            tbody.innerHTML = orders.slice(0, 8).map(o => `
+                <tr>
+                    <td><span style="font-family:monospace; font-size:0.8rem">#${o._id.slice(-4).toUpperCase()}</span></td>
+                    <td>${o.customerName || 'Noma\'lum'}</td>
+                    <td>${o.orderType === 'delivery' ? '🛵 Dostavka' : o.orderType === 'takeaway' ? '🏃 Olib ketish' : '🪑 Zalda'}</td>
+                    <td><b>${(o.totalAmount || 0).toLocaleString()} s</b></td>
+                    <td><span class="badge ${o.status === 'pending' ? 'badge-yellow' : o.status === 'completed' ? 'badge-green' : 'badge-blue'}">${o.status}</span></td>
+                    <td style="font-size:0.8rem; color:#64748b">${new Date(o.createdAt).toLocaleString('uz')}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="6" class="loading">Buyurtmalar yo\'q</td></tr>';
+        }
+
+        // ===== PRODUCTS =====
+        async function loadProducts() {
+            const [prods, cats] = await Promise.all([
+                fetch(`${API}/products`).then(r => r.json()),
+                fetch('/api/categories').then(r => r.json()),
+            ]);
+            categoriesList = cats;
+            const tbody = document.getElementById('products-table');
+            tbody.innerHTML = prods.map(p => `
+                <tr>
+                    <td>${p.image ? `<img src="${p.image}" class="product-img">` : '<div class="product-img" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem">🍔</div>'}</td>
+                    <td><b>${p.name}</b><br><span style="font-size:0.8rem; color:#94a3b8">${p.description || ''}</span></td>
+                    <td>${p.categoryId?.name || '—'}</td>
+                    <td><b>${(p.price || 0).toLocaleString()} s</b></td>
+                    <td><span class="badge ${p.isActive ? 'badge-green' : 'badge-red'}">${p.isActive ? '✅ Aktiv' : '❌ Nofaol'}</span></td>
+                    <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="btn btn-edit" onclick='editProduct(${JSON.stringify(p)})'>✏️</button>
+                        <button class="btn btn-danger" onclick="deleteProduct('${p._id}')">🗑️</button>
+                    </td>
+                </tr>
+            `).join('') || '<tr><td colspan="6" class="loading">Mahsulotlar yo\'q</td></tr>';
+        }
+
+        function openProductModal() {
+            document.getElementById('product-modal-title').textContent = 'Mahsulot Qo\'shish';
+            document.getElementById('product-id').value = '';
+            document.getElementById('product-name').value = '';
+            document.getElementById('product-desc').value = '';
+            document.getElementById('product-price').value = '';
+            document.getElementById('product-image').value = '';
+            document.getElementById('product-active').value = 'true';
+            const sel = document.getElementById('product-category');
+            sel.innerHTML = categoriesList.map(c => `<option value="${c._id}">${c.name}</option>`).join('');
+            openModal('product-modal');
+        }
+
+        function editProduct(p) {
+            document.getElementById('product-modal-title').textContent = 'Mahsulotni Tahrirlash';
+            document.getElementById('product-id').value = p._id;
+            document.getElementById('product-name').value = p.name;
+            document.getElementById('product-desc').value = p.description || '';
+            document.getElementById('product-price').value = p.price;
+            document.getElementById('product-image').value = p.image || '';
+            document.getElementById('product-active').value = p.isActive.toString();
+            const sel = document.getElementById('product-category');
+            sel.innerHTML = categoriesList.map(c => `<option value="${c._id}" ${(p.categoryId?._id || p.categoryId) === c._id ? 'selected' : ''}>${c.name}</option>`).join('');
+            openModal('product-modal');
+        }
+
+        async function saveProduct() {
+            const id = document.getElementById('product-id').value;
+            const data = {
+                name: document.getElementById('product-name').value,
+                description: document.getElementById('product-desc').value,
+                price: Number(document.getElementById('product-price').value),
+                image: document.getElementById('product-image').value,
+                categoryId: document.getElementById('product-category').value,
+                isActive: document.getElementById('product-active').value === 'true'
+            };
+            const url = id ? `${API}/products/${id}` : `${API}/products`;
+            const method = id ? 'PUT' : 'POST';
+            await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+            closeModal('product-modal');
+            loadProducts();
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('O\'chirishga ishonchingiz komilmi?')) return;
+            await fetch(`${API}/products/${id}`, { method: 'DELETE' });
+            loadProducts();
+        }
+
+        // ===== CATEGORIES =====
+        async function loadCategories() {
+            const cats = await fetch('/api/categories').then(r => r.json());
+            categoriesList = cats;
+            document.getElementById('categories-table').innerHTML = cats.map(c => `
+                <tr>
+                    <td><b>${c.name}</b></td>
+                    <td><span class="badge ${c.isActive ? 'badge-green' : 'badge-red'}">${c.isActive ? '✅ Aktiv' : '❌ Nofaol'}</span></td>
+                    <td style="display:flex; gap:6px;">
+                        <button class="btn btn-edit" onclick='editCategory(${JSON.stringify(c)})'>✏️</button>
+                        <button class="btn btn-danger" onclick="deleteCategory('${c._id}')">🗑️</button>
+                    </td>
+                </tr>
+            `).join('') || '<tr><td colspan="3" class="loading">Kategoriyalar yo\'q</td></tr>';
+        }
+
+        function openCategoryModal() {
+            document.getElementById('category-id').value = '';
+            document.getElementById('category-name').value = '';
+            openModal('category-modal');
+        }
+
+        function editCategory(c) {
+            document.getElementById('category-id').value = c._id;
+            document.getElementById('category-name').value = c.name;
+            openModal('category-modal');
+        }
+
+        async function saveCategory() {
+            const id = document.getElementById('category-id').value;
+            const data = { name: document.getElementById('category-name').value };
+            const url = id ? `${API}/categories/${id}` : `${API}/categories`;
+            const method = id ? 'PUT' : 'POST';
+            await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+            closeModal('category-modal');
+            loadCategories();
+        }
+
+        async function deleteCategory(id) {
+            if (!confirm('O\'chirishga ishonchingiz komilmi?')) return;
+            await fetch(`${API}/categories/${id}`, { method: 'DELETE' });
+            loadCategories();
+        }
+
+        // ===== BRANCHES ====
+        async function loadBranches() {
+            const brans = await fetch(`${API}/branches`).then(r => r.json());
+            document.getElementById('branches-table').innerHTML = brans.map(b => `
+                <tr>
+                    <td><b>${b.name}</b></td>
+                    <td>${b.address}</td>
+                    <td><span class="badge ${b.isActive ? 'badge-green' : 'badge-red'}">${b.isActive ? '✅ Aktiv' : '❌ Nofaol'}</span></td>
+                    <td style="display:flex; gap:6px;">
+                        <button class="btn btn-edit" onclick='editBranch(${JSON.stringify(b)})'>✏️</button>
+                        <button class="btn btn-danger" onclick="deleteBranch('${b._id}')">🗑️</button>
+                    </td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" class="loading">Filiallar yo\'q</td></tr>';
+        }
+
+        function openBranchModal() {
+            ['branch-id','branch-name','branch-address','branch-lat','branch-lng'].forEach(id => document.getElementById(id).value = '');
+            openModal('branch-modal');
+        }
+
+        function editBranch(b) {
+            document.getElementById('branch-id').value = b._id;
+            document.getElementById('branch-name').value = b.name;
+            document.getElementById('branch-address').value = b.address;
+            document.getElementById('branch-lat').value = b.location?.lat || '';
+            document.getElementById('branch-lng').value = b.location?.lng || '';
+            openModal('branch-modal');
+        }
+
+        async function saveBranch() {
+            const id = document.getElementById('branch-id').value;
+            const data = {
+                name: document.getElementById('branch-name').value,
+                address: document.getElementById('branch-address').value,
+                location: {
+                    lat: Number(document.getElementById('branch-lat').value) || 0,
+                    lng: Number(document.getElementById('branch-lng').value) || 0
+                }
+            };
+            const url = id ? `${API}/branches/${id}` : `${API}/branches`;
+            const method = id ? 'PUT' : 'POST';
+            await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+            closeModal('branch-modal');
+            loadBranches();
+        }
+
+        async function deleteBranch(id) {
+            if (!confirm('O\'chirishga ishonchingiz komilmi?')) return;
+            await fetch(`${API}/branches/${id}`, { method: 'DELETE' });
+            loadBranches();
+        }
+
+        // ===== ORDERS =====
+        async function loadOrders() {
+            const orders = await fetch(`${API}/orders`).then(r => r.json());
+            document.getElementById('orders-table').innerHTML = orders.map(o => `
+                <tr>
+                    <td><span style="font-family:monospace; font-size:0.8rem">#${o._id.slice(-4).toUpperCase()}</span></td>
+                    <td>${o.customerName || 'Noma\'lum'}</td>
+                    <td>${o.customerPhone || '—'}</td>
+                    <td>${o.orderType === 'delivery' ? '🛵' : o.orderType === 'takeaway' ? '🏃' : '🪑'} ${o.orderType}</td>
+                    <td style="font-size:0.8rem">${(o.items || []).map(i => `${i.productName || i.productId} x${i.quantity}`).join(', ')}</td>
+                    <td><b>${(o.totalAmount || 0).toLocaleString()} s</b></td>
+                    <td><span class="badge ${o.status === 'pending' ? 'badge-yellow' : o.status === 'completed' ? 'badge-green' : o.status === 'cancelled' ? 'badge-red' : 'badge-blue'}">${o.status}</span></td>
+                    <td style="font-size:0.8rem; color:#64748b; white-space:nowrap">${new Date(o.createdAt).toLocaleString('uz')}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="8" class="loading">Buyurtmalar yo\'q</td></tr>';
+        }
+
+        // Init
+        loadDashboard();
+    </script>
+</body>
+</html>
