@@ -196,19 +196,25 @@ import routes from './routes';
 app.use('/api', routes);
 
 // Serve Admin Panel
-const adminPath = path.join(process.cwd(), 'public/admin');
+const adminPath = path.join(process.cwd(), 'public', 'admin');
 app.use('/admin', express.static(adminPath));
 app.get('/admin', (_req, res) => {
     res.sendFile(path.join(adminPath, 'index.html'));
 });
 
-// Serve Static Frontend Pages
-const frontendPath = path.join(__dirname, '../../frontend/dist');
+// Serve Static Frontend Pages (frontend/dist papkasidan)
+const frontendPath = path.join(process.cwd(), 'frontend', 'dist');
 app.use(express.static(frontendPath));
 
 // Wildcard for React Router
 app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
+    const indexFile = path.join(frontendPath, 'index.html');
+    // Agar frontend build mavjud bo'lsa — uni qaytarish
+    if (require('fs').existsSync(indexFile)) {
+        res.sendFile(indexFile);
+    } else {
+        res.status(404).json({ message: 'Frontend build topilmadi. npm run build:all ni ishga tushiring.' });
+    }
 });
 
 // Database & Server Connection
@@ -255,16 +261,3 @@ mongoose.connect(process.env.MONGODB_URI as string)
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
-
-
-
-
-
-
-
-
-
-
-
-// Restart triggered at 2026-03-09T03:00:18.318Z

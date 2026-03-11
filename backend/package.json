@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "build:all": "cd ../frontend && npm install && npm run build && cd ../backend && npm install && tsc",
+    "seed": "npx ts-node seed.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",
