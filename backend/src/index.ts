@@ -261,3 +261,4 @@ mongoose.connect(process.env.MONGODB_URI as string)
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGUSR2', () => bot.stop('SIGUSR2'));

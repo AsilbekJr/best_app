@@ -72,51 +72,50 @@ export const Checkout = () => {
 
     const handleSubmitOrder = async () => {
         if (!name || !phone) {
-            WebApp.showAlert("Iltimos, ism va telefon raqamingizni kiriting!");
+            alert("Iltimos, ism va telefon raqamingizni kiriting!");
             return;
         }
 
         if (orderType === 'delivery' && !address) {
-            WebApp.showAlert("Iltimos, yetkazib berish manzilini kiriting!");
+            alert("Iltimos, yetkazib berish manzilini kiriting!");
             return;
         }
 
-        WebApp.showConfirm("Buyurtmani tasdiqlaysizmi?", async (confirmed) => {
-            if (confirmed) {
-                setIsLoading(true);
-                try {
-                    // API ga jo'natish formati
-                    const orderData = {
-                        customerName: name,
-                        customerPhone: phone,
-                        orderType: orderType,
-                        tableNumber: orderType === 'dine-in' ? tableInfo : undefined,
-                        branchName: (orderType === 'takeaway' || orderType === 'dine-in') ? selectedBranch : undefined,
-                        deliveryAddress: orderType === 'delivery' ? address : undefined,
-                        // Bu yerda aslida Product ID lar ketishi kerak, vizualizatsiya uchun oddiy object
-                        items: Object.keys(cartItems).map(id => ({
-                            productId: id,
-                            productName: cartItems[id].name, // Foydalanuvchiga tushunarli nomi o'tadi
-                            quantity: cartItems[id].quantity,
-                            price: 0
-                        })),
-                        totalAmount: calculatedTotal,
-                        telegramChatId: WebApp.initDataUnsafe?.user?.id?.toString()
-                    };
+        const confirmed = window.confirm("Buyurtmani tasdiqlaysizmi?");
+        if (confirmed) {
+            setIsLoading(true);
+            try {
+                // API ga jo'natish formati
+                const orderData = {
+                    customerName: name,
+                    customerPhone: phone,
+                    orderType: orderType,
+                    tableNumber: orderType === 'dine-in' ? tableInfo : undefined,
+                    branchName: (orderType === 'takeaway' || orderType === 'dine-in') ? selectedBranch : undefined,
+                    deliveryAddress: orderType === 'delivery' ? address : undefined,
+                    // Bu yerda aslida Product ID lar ketishi kerak, vizualizatsiya uchun oddiy object
+                    items: Object.keys(cartItems).map(id => ({
+                        productId: id,
+                        productName: cartItems[id].name, // Foydalanuvchiga tushunarli nomi o'tadi
+                        quantity: cartItems[id].quantity,
+                        price: 0
+                    })),
+                    totalAmount: calculatedTotal,
+                    telegramChatId: WebApp.initDataUnsafe?.user?.id?.toString()
+                };
 
-                    await axios.post(`${API_URL}/orders`, orderData);
-                    
-                    WebApp.showAlert("Buyurtmangiz qabul qilindi! Oshpazlar uni tayyorlashni boshlashdi.");
-                    // Kelajakda bu yerda tozalash yoki yopish mantiqi ishlaydi
-                    WebApp.close(); 
-                } catch (error) {
-                    console.error("Order error", error);
-                    WebApp.showAlert("Xatolik yuz berdi. Iltimos qayta urinib ko'ring.");
-                } finally {
-                    setIsLoading(false);
-                }
+                await axios.post(`${API_URL}/orders`, orderData);
+                
+                alert("Buyurtmangiz qabul qilindi! Oshpazlar uni tayyorlashni boshlashdi.");
+                // Kelajakda bu yerda tozalash yoki yopish mantiqi ishlaydi
+                WebApp.close(); 
+            } catch (error) {
+                console.error("Order error", error);
+                alert("Xatolik yuz berdi. Iltimos qayta urinib ko'ring.");
+            } finally {
+                setIsLoading(false);
             }
-        });
+        }
     };
 
     return (
@@ -262,12 +261,12 @@ export const Checkout = () => {
 
             </main>
 
-            {/* Bottom Button */}
-            <div className="fixed bottom-4 left-0 right-0 px-4 max-w-md mx-auto">
+            {/* Bottom Button Container - Fixed with Background */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 max-w-md mx-auto">
                 <button 
                     onClick={handleSubmitOrder}
                     disabled={isLoading}
-                    className="btn-primary w-full shadow-lg shadow-green-500/20 text-lg flex justify-center items-center gap-2"
+                    className="w-full bg-[#1d9e3d] hover:bg-[#167a2f] text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-green-600/20 text-lg flex justify-center items-center gap-2 active:scale-[0.98] transition-all disabled:opacity-70"
                 >
                     {isLoading ? <Loader2 className="animate-spin" size={24} /> : "Buyurtma berish"}
                 </button>

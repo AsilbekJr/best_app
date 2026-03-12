@@ -83,12 +83,13 @@ const sendOrderToAdminGroup = async (order: any) => {
             ]
         };
 
-        const { bot } = require('../index');
+        const indexModule = require('../index');
+        const telegramBot = indexModule.bot || indexModule.default?.bot;
         
-        console.log(`Sending to Admin Group: ${adminGroupId}, Bot defined: ${!!bot}`);
+        console.log(`Sending to Admin Group: ${adminGroupId}, Bot defined: ${!!telegramBot}`);
 
-        if (bot) {
-            await bot.telegram.sendMessage(adminGroupId, message, { parse_mode: 'HTML', reply_markup: keyboard });
+        if (telegramBot) {
+            await telegramBot.telegram.sendMessage(adminGroupId, message, { parse_mode: 'HTML', reply_markup: keyboard });
             console.log("Xabar adminga muvaffaqiyatli jo'natildi!");
         } else {
             console.error("Bot instansi topilmadi!");
