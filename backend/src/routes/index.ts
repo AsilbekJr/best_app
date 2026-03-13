@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getCategories, getProducts, getBranches } from '../controllers/MenuController';
-import { createOrder } from '../controllers/OrderController';
+import { createOrder, getMyOrders } from '../controllers/OrderController';
 import {
     createCategory, updateCategory, deleteCategory,
     getAllProducts, createProduct, updateProduct, deleteProduct,
@@ -16,6 +16,7 @@ router.get('/categories', getCategories);
 router.get('/products', getProducts);
 router.get('/branches', getBranches);
 router.post('/orders', createOrder);
+router.get('/orders/my/:chatId', getMyOrders);
 
 // ========== ADMIN API ==========
 // Categories

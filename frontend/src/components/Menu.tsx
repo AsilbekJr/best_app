@@ -3,7 +3,10 @@ import { Plus, Minus, Zap, Loader2 } from 'lucide-react';
 import { ProductDetail } from './ProductDetail';
 import { HeroBanner } from './HeroBanner';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { useDispatch, useSelector } from 'react-redux';
+import { addToCart, removeFromCart } from '../store/cartSlice';
+import { useGetCategoriesQuery, useGetProductsQuery } from '../store/apiSlice';
+import type { RootState } from '../store';
 
 // Cross-sell qoidalari: Category bo'yicha (categoryId string)
 // Backend dan kelgach dinamik qilinadi, hozir categoryName ga asoslangan qoidalar
@@ -19,60 +22,51 @@ const getCrossSellForCategory = (categoryName: string, allProducts: any[]) => {
 };
 
 interface MenuProps {
-    cartItems?: Record<string, { quantity: number, name: string }>;
-    onCartChange: (total: number, items: Record<string, { quantity: number, name: string }>) => void;
     searchQuery?: string;
 }
 
-export const Menu = ({ cartItems = {}, onCartChange, searchQuery = '' }: MenuProps) => {
+export const Menu = ({ searchQuery = '' }: MenuProps) => {
+    const dispatch = useDispatch();
+    const cartItems = useSelector((state: RootState) => state.cart.items);
+    
+    // RTK Query hooks
+    const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery();
+    const { data: allProductsData, isLoading: productsLoading } = useGetProductsQuery();
+
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
-    const [categories, setCategories] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
-    const [allProducts, setAllProducts] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [crossSellProducts, setCrossSellProducts] = useState<any[]>([]);
     const [showCrossSell, setShowCrossSell] = useState(false);
 
-    // Kategoriyalarni yuklab olish
+    // Initial category selection
     useEffect(() => {
-        fetch(`${API_URL}/categories`)
-            .then(r => r.json())
-            .then(data => {
-                setCategories(data);
-                if (data.length > 0) setActiveCategory(data[0]._id);
-            })
-            .catch(err => console.error('Kategoriya xatosi:', err));
-    }, []);
-
-    // Barcha mahsulotlarni cross-sell uchun bir marta yuklab olamiz
-    useEffect(() => {
-        fetch(`${API_URL}/products`)
-            .then(r => r.json())
-            .then(data => setAllProducts(data))
-            .catch(err => console.error('Mahsulotlar xatosi:', err));
-    }, []);
+        if (categoriesData && categoriesData.length > 0 && !activeCategory) {
+            setActiveCategory(categoriesData[0]._id);
+        }
+    }, [categoriesData, activeCategory]);
 
     // Aktiv kategoriya o'zgarganda mahsulotlarni filter qilish
     useEffect(() => {
-        setLoading(true);
-        let filtered = allProducts;
+        if (!allProductsData) return;
+        
+        let filtered = allProductsData;
         
         if (searchQuery.trim()) {
-            filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+            filtered = allProductsData.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
         } else if (activeCategory) {
-            filtered = allProducts.filter(p => {
+            filtered = allProductsData.filter(p => {
                 const catId = typeof p.categoryId === 'object' ? p.categoryId._id : p.categoryId;
                 return catId === activeCategory;
             });
         }
         
         setProducts(filtered);
-        setLoading(false);
-    }, [activeCategory, allProducts, searchQuery]);
+    }, [activeCategory, allProductsData, searchQuery]);
 
     // Cross-sell hisoblash
     useEffect(() => {
+        if (!allProductsData) return;
         const cartIds = Object.keys(cartItems);
         if (cartIds.length === 0) {
             setShowCrossSell(false);
@@ -81,56 +75,51 @@ export const Menu = ({ cartItems = {}, onCartChange, searchQuery = '' }: MenuPro
 
         const recommended = new Set<string>();
         cartIds.forEach(id => {
-            const cartProduct = allProducts.find(p => p._id === id);
+            const cartProduct = allProductsData.find(p => p._id === id);
             if (cartProduct) {
-                const suggestions = getCrossSellForCategory(cartProduct.categoryId?.name || '', allProducts);
+                const suggestions = getCrossSellForCategory(cartProduct.categoryId?.name || '', allProductsData);
                 suggestions.forEach(s => recommended.add(s._id));
             }
         });
         cartIds.forEach(id => recommended.delete(id));
 
         const suggestions = Array.from(recommended)
-            .map(id => allProducts.find(p => p._id === id)!)
+            .map(id => allProductsData.find(p => p._id === id)!)
             .filter(Boolean)
             .slice(0, 3);
 
         setCrossSellProducts(suggestions);
         setShowCrossSell(suggestions.length > 0);
-    }, [cartItems, allProducts]);
-
-    const getProductPrice = (productId: string) => {
-        const product = allProducts.find(p => p._id === productId);
-        return product ? product.price : 0;
-    };
+    }, [cartItems, allProductsData]);
 
     const handleAdd = (product: any) => {
-        const currentItem = cartItems[product._id] || { quantity: 0, name: product.name, price: product.price, image: product.image };
-        const newCart = { ...cartItems, [product._id]: { ...currentItem, quantity: currentItem.quantity + 1 } };
-        updateCartTotal(newCart);
+        dispatch(addToCart({
+            id: product._id,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+            quantity: 1
+        }));
     };
 
     const handleRemove = (product: any) => {
-        if (!cartItems[product._id]) return;
-        const newCart = { ...cartItems };
-        newCart[product._id] = { ...newCart[product._id], quantity: newCart[product._id].quantity - 1 };
-        if (newCart[product._id].quantity <= 0) delete newCart[product._id];
-        updateCartTotal(newCart);
+        dispatch(removeFromCart(product._id));
     };
 
-    const updateCartTotal = (newCart: Record<string, { quantity: number, name: string }>) => {
-        let total = 0;
-        Object.keys(newCart).forEach(itemId => {
-            total += getProductPrice(itemId) * newCart[itemId].quantity;
-        });
-        onCartChange(total, newCart);
-    };
+    if (categoriesLoading || productsLoading) {
+        return (
+            <div className="flex justify-center py-10">
+                <Loader2 size={32} className="animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4 pb-24">
             {/* Hero Bannerlar */}
             <HeroBanner onBannerTap={(categoryKey) => {
                 // CategoryKey bo'yicha mos kategoriyani qidirish
-                const match = categories.find(c =>
+                const match = categoriesData?.find((c: any) =>
                     c.name.toLowerCase().includes(categoryKey.toLowerCase())
                 );
                 if (match) {
@@ -145,7 +134,7 @@ export const Menu = ({ cartItems = {}, onCartChange, searchQuery = '' }: MenuPro
 
             {/* Categories Scroll */}
             <div className="flex overflow-x-auto gap-3 pb-2 -mx-4 snap-x before:content-[''] before:w-4 before:shrink-0 before:block after:content-[''] after:w-4 after:shrink-0 after:block" style={{ scrollbarWidth: 'none' }}>
-                {categories.map(cat => (
+                {categoriesData?.map((cat: any) => (
                     <button
                         key={cat._id}
                         onClick={() => setActiveCategory(cat._id)}
@@ -211,8 +200,7 @@ export const Menu = ({ cartItems = {}, onCartChange, searchQuery = '' }: MenuPro
                 </div>
             )}
 
-            {/* Products Grid */}
-            {loading ? (
+            {categoriesLoading || productsLoading ? (
                 <div className="flex items-center justify-center py-16">
                     <Loader2 size={32} className="text-primary animate-spin" />
                 </div>
@@ -296,7 +284,7 @@ export const Menu = ({ cartItems = {}, onCartChange, searchQuery = '' }: MenuPro
                             </div>
                         );
                     })}
-                    {products.length === 0 && !loading && (
+                    {products.length === 0 && !productsLoading && (
                         <div className="col-span-2 text-center py-12 text-gray-400">
                             <p className="text-4xl mb-2">🍽️</p>
                             <p>Bu kategoriyada mahsulotlar yo'q</p>

@@ -39,6 +39,24 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 };
 
+export const getMyOrders = async (req: Request, res: Response) => {
+    try {
+        const { chatId } = req.params;
+        if (!chatId) {
+            return res.status(400).json({ message: "Chat ID (Telegram ID) talab qilinadi" });
+        }
+
+        const orders = await Order.find({ telegramChatId: chatId })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.status(200).json(orders);
+    } catch (error) {
+        console.error('Buyurtmalarni olishda xatolik:', error);
+        res.status(500).json({ message: 'Server xatosi', error });
+    }
+};
+
 const sendOrderToAdminGroup = async (order: any) => {
     try {
         const adminGroupId = process.env.ADMIN_GROUP_ID;

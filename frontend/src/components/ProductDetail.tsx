@@ -65,7 +65,7 @@ export const ProductDetail = ({ product, cartQuantity, onClose, onAdd }: Product
 
     return (
         <div
-            className={`fixed inset-0 z-50 transition-all duration-300 ${visible ? 'bg-black/60' : 'bg-transparent'}`}
+            className={`fixed inset-0 z-[60] transition-all duration-300 ${visible ? 'bg-black/60' : 'bg-transparent'}`}
             onClick={handleClose}
         >
             {/* Bottom Sheet */}

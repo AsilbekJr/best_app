@@ -1,19 +1,26 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState } from '../store';
+import { clearCart } from '../store/cartSlice';
+import { useGetBranchesQuery, useCreateOrderMutation, useCheckPromoMutation } from '../store/apiSlice';
 import { ArrowLeft, MapPin, Store, UtensilsCrossed, Loader2, Tag, CheckCircle2, XCircle, Wallet, CreditCard, Navigation } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const Checkout = () => {
     const navigate = useNavigate();
-    const location = useLocation();
-    const { cartTotal, cartItems } = location.state || { cartTotal: 0, cartItems: {} };
+    const dispatch = useDispatch();
+
+    const cartItems = useSelector((state: RootState) => state.cart.items);
+    const cartTotal = useSelector((state: RootState) => state.cart.totalAmount);
+    
+    const { data: branchesData, isLoading: branchesLoading } = useGetBranchesQuery();
+    const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
+    const [checkPromoData, { isLoading: promoLoading }] = useCheckPromoMutation();
     
     const [orderType, setOrderType] = useState('delivery'); // 'delivery' | 'takeaway' | 'dine-in'
-    const [isLoading, setIsLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'card' | 'click'
+
     
     // Form states
     const [name, setName] = useState(WebApp.initDataUnsafe?.user?.first_name || '');
@@ -21,23 +28,18 @@ export const Checkout = () => {
     const [address, setAddress] = useState('');
     const [tableInfo, setTableInfo] = useState('');
     const [selectedBranch, setSelectedBranch] = useState('');
-    const [branches, setBranches] = useState<any[]>([]);
+    
     // Promokod states
     const [promoCode, setPromoCode] = useState('');
     const [promoResult, setPromoResult] = useState<any>(null);
     const [promoError, setPromoError] = useState('');
-    const [promoLoading, setPromoLoading] = useState(false);
 
-    // Filiallarni API dan yuklab olish
+    // Filiallarni yuklab olish
     useEffect(() => {
-        fetch(`${API_URL}/branches`)
-            .then(r => r.json())
-            .then(data => {
-                setBranches(data);
-                if (data.length > 0) setSelectedBranch(data[0].name);
-            })
-            .catch(err => console.error('Filiallar xatosi:', err));
-    }, []);
+        if (branchesData && branchesData.length > 0 && !selectedBranch) {
+            setSelectedBranch(branchesData[0].name);
+        }
+    }, [branchesData, selectedBranch]);
 
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let val = e.target.value.replace(/\D/g, '');
@@ -97,19 +99,16 @@ export const Checkout = () => {
 
     const handleCheckPromo = async () => {
         if (!promoCode.trim()) return;
-        setPromoLoading(true);
         setPromoError('');
         setPromoResult(null);
         try {
-            const res = await axios.post(`${API_URL}/check-promo`, {
+            const res = await checkPromoData({
                 code: promoCode.trim(),
                 orderAmount: baseTotal
-            });
-            setPromoResult(res.data);
+            }).unwrap();
+            setPromoResult(res);
         } catch (err: any) {
-            setPromoError(err.response?.data?.message || 'Promokod xato');
-        } finally {
-            setPromoLoading(false);
+            setPromoError(err.data?.message || 'Promokod xato');
         }
     };
 
@@ -126,7 +125,6 @@ export const Checkout = () => {
 
         const confirmed = window.confirm("Buyurtmani tasdiqlaysizmi?");
         if (confirmed) {
-            setIsLoading(true);
             try {
                 // API ga jo'natish formati
                 const orderData = {
@@ -137,7 +135,6 @@ export const Checkout = () => {
                     tableNumber: orderType === 'dine-in' ? tableInfo : undefined,
                     branchName: (orderType === 'takeaway' || orderType === 'dine-in') ? selectedBranch : undefined,
                     deliveryAddress: orderType === 'delivery' ? address : undefined,
-                    // Bu yerda aslida Product ID lar ketishi kerak, vizualizatsiya uchun oddiy object
                     items: Object.keys(cartItems).map(id => ({
                         productId: id,
                         productName: cartItems[id].name, // Foydalanuvchiga tushunarli nomi o'tadi
@@ -148,16 +145,15 @@ export const Checkout = () => {
                     telegramChatId: WebApp.initDataUnsafe?.user?.id?.toString()
                 };
 
-                await axios.post(`${API_URL}/orders`, orderData);
+                await createOrder(orderData).unwrap();
                 
                 alert("Buyurtmangiz qabul qilindi! Oshpazlar uni tayyorlashni boshlashdi.");
+                dispatch(clearCart());
                 // Kelajakda bu yerda tozalash yoki yopish mantiqi ishlaydi
                 WebApp.close(); 
             } catch (error) {
                 console.error("Order error", error);
                 alert("Xatolik yuz berdi. Iltimos qayta urinib ko'ring.");
-            } finally {
-                setIsLoading(false);
             }
         }
     };
@@ -233,8 +229,8 @@ export const Checkout = () => {
                         {(orderType === 'takeaway' || orderType === 'dine-in') && (
                             <label className="block">
                                 <span className="text-sm text-gray-500 mb-1 block">Qaysi filialdan?</span>
-                                <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-                                    {branches.map(b => (
+                                <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)} disabled={branchesLoading} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                                    {branchesLoading ? <option>Yuklanmoqda...</option> : branchesData?.map((b: any) => (
                                         <option key={b._id} value={b.name}>{b.name}</option>
                                     ))}
                                 </select>
@@ -343,10 +339,10 @@ export const Checkout = () => {
             <div className="fixed bottom-4 left-0 right-0 px-4 max-w-md mx-auto">
                 <button 
                     onClick={handleSubmitOrder}
-                    disabled={isLoading}
+                    disabled={isCreatingOrder}
                     className="btn-primary w-full shadow-lg shadow-green-500/20 text-lg flex justify-center items-center gap-2"
                 >
-                    {isLoading ? <Loader2 className="animate-spin" size={24} /> : "Buyurtma berish"}
+                    {isCreatingOrder ? <Loader2 className="animate-spin" size={24} /> : "Buyurtma berish"}
                 </button>
             </div>
         </div>

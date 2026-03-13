@@ -1,31 +1,22 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from './store';
+import { updateQuantity } from './store/cartSlice';
 import WebApp from '@twa-dev/sdk'
-import { ShoppingBag, Search } from 'lucide-react'; // Added lucide-react imports
+import { Search } from 'lucide-react'; // Added lucide-react imports
 import { Menu } from './components/Menu'
 import { Checkout } from './components/Checkout'
 import { SplashScreen } from './components/SplashScreen'
 
 import { CartModal } from './components/CartModal'
+import { BottomNav } from './components/BottomNav';
+import { OrdersPage } from './pages/OrdersPage';
+import { ProfilePage } from './pages/ProfilePage';
 
-function HomePage({ cartTotal, cartItems, onCartChange }: any) {
-  const [showCart, setShowCart] = useState(false);
+function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const hasItems = Object.keys(cartItems).length > 0;
-
-  const handleUpdateCart = (productId: string, newQuantity: number) => {
-    const newItems = { ...cartItems };
-    if (newQuantity <= 0) {
-      delete newItems[productId];
-    } else {
-      if (newItems[productId]) {
-          newItems[productId] = { ...newItems[productId], quantity: newQuantity };
-      }
-    }
-    const newTotal = Object.values(newItems).reduce((acc: number, item: any) => acc + ((item.price || 0) * item.quantity), 0);
-    onCartChange(newTotal, newItems);
-  };
-
+  
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between gap-3 shadow-sm">
@@ -48,38 +39,16 @@ function HomePage({ cartTotal, cartItems, onCartChange }: any) {
       </header>
 
       <main className="p-4">
-        <Menu onCartChange={onCartChange} cartItems={cartItems} searchQuery={searchQuery} />
+        <Menu searchQuery={searchQuery} />
       </main>
 
-      {hasItems && !showCart && (
-        <div className="fixed bottom-4 left-0 right-0 px-4 max-w-md mx-auto animate-in slide-in-from-bottom-5 duration-300">
-          <button 
-            onClick={() => setShowCart(true)}
-            className="btn-primary w-full flex items-center justify-between shadow-lg shadow-green-500/20"
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingBag size={20} />
-              <span>Savatni ko'rish</span>
-            </div>
-            <span className="bg-white/20 px-2 py-0.5 rounded-md text-sm">{cartTotal.toLocaleString()} so'm</span>
-          </button>
-        </div>
-      )}
+      {/* CartModal endi Global App levelda boshqariladi va BottomNav'ga bog'lanadi, shuning uchun HomePage da modalni yashirin saqlab global state orqali chaqiramiz */}
 
-      <CartModal 
-        visible={showCart} 
-        onClose={() => setShowCart(false)} 
-        cartItems={cartItems} 
-        cartTotal={cartTotal} 
-        onUpdateCart={handleUpdateCart} 
-      />
     </div>
   )
 }
 
 function App() {
-  const [total, setTotal] = useState(0);
-  const [cartItems, setCartItems] = useState<Record<string, number>>({});
   const [showSplash, setShowSplash] = useState(() => {
     // Faqat birinchi marta ko'rsatish
     const seen = sessionStorage.getItem('splash_seen');
@@ -94,9 +63,13 @@ function App() {
     WebApp.setHeaderColor('#ffffff');
   }, []);
 
-  const handleCartChange = (newTotal: number, newItems: any) => {
-    setTotal(newTotal);
-    setCartItems(newItems);
+  const [showCartModal, setShowCartModal] = useState(false);
+  const dispatch = useDispatch();
+  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const cartTotal = useSelector((state: RootState) => state.cart.totalAmount);
+
+  const handleUpdateCart = (productId: string, newQuantity: number) => {
+    dispatch(updateQuantity({ id: productId, quantity: newQuantity }));
   };
 
   return (
@@ -104,9 +77,23 @@ function App() {
       <div className="max-w-md mx-auto relative shadow-2xl shadow-black/5 min-h-screen bg-white">
         {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
         <Routes>
-          <Route path="/" element={<HomePage cartTotal={total} cartItems={cartItems} onCartChange={handleCartChange} />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
+        
+        {/* Global Cart Modal */}
+        <CartModal 
+          visible={showCartModal} 
+          onClose={() => setShowCartModal(false)} 
+          cartItems={cartItems} 
+          cartTotal={cartTotal} 
+          onUpdateCart={handleUpdateCart} 
+        />
+        
+        {/* Global Bottom Navigation */}
+        <BottomNav onCartClick={() => setShowCartModal(true)} onItemClick={() => setShowCartModal(false)} />
       </div>
     </Router>
   )
