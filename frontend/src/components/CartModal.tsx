@@ -16,7 +16,7 @@ export const CartModal = ({ visible, onClose, cartItems, cartTotal, onUpdateCart
     if (!visible) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
             {/* Overlay */}
             <div 
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" 
@@ -25,7 +25,7 @@ export const CartModal = ({ visible, onClose, cartItems, cartTotal, onUpdateCart
 
             {/* Bottom Sheet Modal */}
             <div 
-                className="relative bg-white w-full max-w-md max-h-[90vh] rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col animate-in slide-in-from-bottom-full duration-300 pb-20"
+                className="relative bg-white w-full max-w-md max-h-[90vh] rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col animate-in slide-in-from-bottom-full duration-300"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-gray-100">

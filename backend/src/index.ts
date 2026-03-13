@@ -166,7 +166,8 @@ bot.on('location', (ctx) => {
     });
 });
 
-bot.start((ctx) => {
+bot.start(async (ctx) => {
+    console.log("bot.start payload caught");
     if (ctx.chat?.type !== 'private') {
         return ctx.reply("Salom! Ushbu buyruq orqali bot guruhda ishga tushirildi. Buyurtmalar shu yerga keladi.");
     }
@@ -181,7 +182,7 @@ bot.start((ctx) => {
 
     const payload = ctx.payload;
     if (payload) {
-        ctx.reply(`Xush kelibsiz! Siz stoldan kirdingiz. Kod: ${payload}. Web App ni ochish uchun quyidagi tugmani bosing:`, {
+        await ctx.reply(`Xush kelibsiz! Siz stoldan kirdingiz. Kod: ${payload}. Web App ni ochish uchun quyidagi tugmani bosing:`, {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "🍔 Menyu (Buyurtma berish)", web_app: { url: `${process.env.FRONTEND_URL}?table=${payload}` } }]
@@ -189,7 +190,7 @@ bot.start((ctx) => {
             }
         });
     } else {
-        ctx.reply("Best Burger ga xush kelibsiz!\n\nYetkazib berish xizmatidan oson foydalanish uchun lokatsiyangizni yuboring 📍", {
+        await ctx.reply("Best Burger ga xush kelibsiz!\n\nYetkazib berish xizmatidan oson foydalanish uchun lokatsiyangizni yuboring 📍", {
             reply_markup: {
                 keyboard: [
                     [{ text: "📍 Lokatsiyamni jo'natish", request_location: true }]
@@ -199,7 +200,7 @@ bot.start((ctx) => {
             }
         });
         
-        ctx.reply("Menyuni ko'rish uchun pastdagi tugmani bosing:", {
+        await ctx.reply("Menyuni ko'rish uchun pastdagi tugmani bosing:", {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "🍔 Menyu", web_app: { url: process.env.FRONTEND_URL || 'http://localhost:5173' } }]
@@ -240,33 +241,31 @@ app.get('*', (req, res) => {
 mongoose.connect(process.env.MONGODB_URI as string)
     .then(() => {
         console.log('Connected to MongoDB');
-        app.listen(PORT, async () => {
+        app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
             if (process.env.BOT_TOKEN && process.env.BOT_TOKEN !== 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
-                try {
-                    await bot.launch();
-                    console.log('Telegram bot is running');
-                    
-                    if (process.env.FRONTEND_URL) {
-                        try {
-                            await fetch(`https://api.telegram.org/bot${process.env.BOT_TOKEN}/setChatMenuButton`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    menu_button: {
-                                        type: "web_app",
-                                        text: "🍔 Menyu",
-                                        web_app: { url: process.env.FRONTEND_URL }
-                                    }
-                                })
-                            });
-                            console.log('Bot Menu Button successfully auto-updated!');
-                        } catch (menuErr: any) {
-                            console.error('Failed to update Bot Menu Button', menuErr.message);
-                        }
-                    }
-                } catch (botErr) {
+                bot.launch().catch(botErr => {
                     console.error('Failed to launch bot', botErr);
+                });
+                console.log('Telegram bot is running');
+                
+                if (process.env.FRONTEND_URL) {
+                    try {
+                        fetch(`https://api.telegram.org/bot${process.env.BOT_TOKEN}/setChatMenuButton`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                menu_button: {
+                                    type: "web_app",
+                                    text: "🍔 Menyu",
+                                    web_app: { url: process.env.FRONTEND_URL }
+                                }
+                            })
+                        }).then(() => console.log('Bot Menu Button successfully auto-updated!'))
+                          .catch(menuErr => console.error('Failed to update Bot Menu Button', menuErr.message));
+                    } catch (menuErr: any) {
+                        console.error('Failed to update Bot Menu Button', menuErr.message);
+                    }
                 }
             } else {
                 console.log('Telegram bot skipping launch - Please provide a valid BOT_TOKEN');
