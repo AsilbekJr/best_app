@@ -157,6 +157,15 @@ bot.action(/rate_(\d)/, async (ctx) => {
     }
 });
 
+bot.on('location', (ctx) => {
+    const { latitude, longitude } = ctx.message.location;
+    ctx.reply(`Sizning manzilingiz qabul qilindi! (${latitude}, ${longitude})\n\nOson buyurtma berish uchun Menyuni oching.`, {
+        reply_markup: {
+            remove_keyboard: true
+        }
+    });
+});
+
 bot.start((ctx) => {
     if (ctx.chat?.type !== 'private') {
         return ctx.reply("Salom! Ushbu buyruq orqali bot guruhda ishga tushirildi. Buyurtmalar shu yerga keladi.");
@@ -180,10 +189,20 @@ bot.start((ctx) => {
             }
         });
     } else {
-        ctx.reply('Best Burger ga xush kelibsiz! Menyuni ko\'rish uchun pastdagi tugmani bosing.', {
+        ctx.reply("Best Burger ga xush kelibsiz!\n\nYetkazib berish xizmatidan oson foydalanish uchun lokatsiyangizni yuboring 📍", {
+            reply_markup: {
+                keyboard: [
+                    [{ text: "📍 Lokatsiyamni jo'natish", request_location: true }]
+                ],
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        });
+        
+        ctx.reply("Menyuni ko'rish uchun pastdagi tugmani bosing:", {
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: "🍔 Menyu (Yetkazib berish)", web_app: { url: process.env.FRONTEND_URL || 'http://localhost:5173' } }]
+                    [{ text: "🍔 Menyu", web_app: { url: process.env.FRONTEND_URL || 'http://localhost:5173' } }]
                 ]
             }
         });

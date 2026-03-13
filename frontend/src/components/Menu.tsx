@@ -21,9 +21,10 @@ const getCrossSellForCategory = (categoryName: string, allProducts: any[]) => {
 interface MenuProps {
     cartItems?: Record<string, { quantity: number, name: string }>;
     onCartChange: (total: number, items: Record<string, { quantity: number, name: string }>) => void;
+    searchQuery?: string;
 }
 
-export const Menu = ({ cartItems = {}, onCartChange }: MenuProps) => {
+export const Menu = ({ cartItems = {}, onCartChange, searchQuery = '' }: MenuProps) => {
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
     const [categories, setCategories] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
@@ -54,15 +55,21 @@ export const Menu = ({ cartItems = {}, onCartChange }: MenuProps) => {
 
     // Aktiv kategoriya o'zgarganda mahsulotlarni filter qilish
     useEffect(() => {
-        if (!activeCategory) return;
         setLoading(true);
-        const filtered = allProducts.filter(p => {
-            const catId = typeof p.categoryId === 'object' ? p.categoryId._id : p.categoryId;
-            return catId === activeCategory;
-        });
+        let filtered = allProducts;
+        
+        if (searchQuery.trim()) {
+            filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        } else if (activeCategory) {
+            filtered = allProducts.filter(p => {
+                const catId = typeof p.categoryId === 'object' ? p.categoryId._id : p.categoryId;
+                return catId === activeCategory;
+            });
+        }
+        
         setProducts(filtered);
         setLoading(false);
-    }, [activeCategory, allProducts]);
+    }, [activeCategory, allProducts, searchQuery]);
 
     // Cross-sell hisoblash
     useEffect(() => {
@@ -97,7 +104,7 @@ export const Menu = ({ cartItems = {}, onCartChange }: MenuProps) => {
     };
 
     const handleAdd = (product: any) => {
-        const currentItem = cartItems[product._id] || { quantity: 0, name: product.name };
+        const currentItem = cartItems[product._id] || { quantity: 0, name: product.name, price: product.price, image: product.image };
         const newCart = { ...cartItems, [product._id]: { ...currentItem, quantity: currentItem.quantity + 1 } };
         updateCartTotal(newCart);
     };
