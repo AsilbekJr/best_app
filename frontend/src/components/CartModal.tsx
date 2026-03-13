@@ -25,7 +25,7 @@ export const CartModal = ({ visible, onClose, cartItems, cartTotal, onUpdateCart
 
             {/* Bottom Sheet Modal */}
             <div 
-                className="relative bg-white w-full max-w-md max-h-[90vh] rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col animate-in slide-in-from-bottom-full duration-300"
+                className="relative bg-white w-full max-w-md max-h-[90vh] rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col animate-in slide-in-from-bottom-full duration-300 pb-20"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-gray-100">
